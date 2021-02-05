@@ -219,7 +219,7 @@ pbase2_dtor_thunk:
 优点：虚函数表本身没变化，也避免了不需要的offset.
 
 本例多重继承的布局如下图:
-图2
+![image_text](https://github.com/lizhicun/c-obj-4/blob/main/image/virtual_table_layout_multi.jpg)
 
 
 对本例而言，有两个 virtual table：
