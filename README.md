@@ -1,4 +1,5 @@
-第四章 Function 语义学（The Semantics of Function）
+# 第四章 Function 语义学（The Semantics of Function）
+
 先举个列子介绍下这章在讲什么：
 ```
 Point3d Point3d::normalize() const {
@@ -25,20 +26,25 @@ ptr->normalize();
 问调用的时候会发生啥？
 c++类中的三种成员函数： static、nonstatic 和 virtual，每种类型被调用的方式都不同。
 
-本章就是在讲：。。。。。。把子目录放上来
+本章就是在讲各种function是怎么被调用的，编译器会做些什么。本章分下面几个小节：
+1. member的各种调用方式
+2. virtual functions
+3. 指向member function的指针
+4. Inline函数
 
-4.1 member的各种调用方式
+## 4.1 member的各种调用方式
 
-历史上，现有nonstatic member function, 20世纪80年代有了virtual function，1987年又有了static member function.
+  历史上，现有nonstatic member function, 20世纪80年代有了virtual function，1987年又有了static member function.
 
-小标题 Nonstatic Member Functions（非静态成员函数）
+### Nonstatic Member Functions（非静态成员函数）
 
 C++ 的设计准则之一：nonstatic member function 至少和一般的 nonmember function 有相同的效率。举个栗子
 ```
 float magnitude3d(const Point3d *_this) { ... }
 float Point3d::magnitude() const { ... }
 ```
-其实编译器就会把第二行的函数变为第一行。编译器会做的：
+其实编译器就会把第二行的函数变为第一行。
+编译器会做的：
 1.改写函数的 signature（函数原型）以安插一个额外的参数到 member function 中，该额外参数就是 this 指针。
 ```
 // non-const nonstatic member augmentation
@@ -56,7 +62,7 @@ extern magnitude__7Point3dFv(
 	register Point3d *const this );
 ```
 
-小标题 Virtual Member Functions（虚拟成员函数）
+### Virtual Member Functions（虚拟成员函数）
 
 如果 normalize() 是一个 virtual member function
 ```
@@ -75,7 +81,7 @@ register float mag = (*this->vptr[2])(this);
 register float msg = Point3d::magnitude();
 ```
 
-小标题：static member function
+### static member function
 如果 normalize() 是一个 static member function
 ```
 obj.normalize();
@@ -86,9 +92,9 @@ ptr->nomalize();
 normalize__7Point3dSFv();
 ```
 Static member function 主要特性就是它没有 this 指针，其次，它还有以下几个次要特性（都是源于主要特性）：
-它不能直接存取 class 中的 nonstatic member。
-它不能被声明为 const、volatile 或 virtual。
-它不需要经由 class object 才被调用。
+* 它不能直接存取 class 中的 nonstatic member。
+* 它不能被声明为 const、volatile 或 virtual。
+* 它不需要经由 class object 才被调用。
 
 指向静态方法的指针的类型是不带类的，比如是
 ```
@@ -100,16 +106,16 @@ unsigned int (Point3d::*) ();
 ```
 
 
-4.2 Virtual Member Function
-它的调用
+## 4.2 Virtual Member Function
+
+有这样的调用
 ```
 pt->z();
 ```
 问：拥有什么样的信息，才能让我们在执行期正确调用z()?
-图
-
-1. pt所指的对象类型
-2. z()函数实体的位置
+答：
+* pt所指的对象类型
+* z()函数实体的位置
 
 为了实现这两点，在对象上增加两个member.
 1. 用字符串或者数字表示对象类型。
@@ -126,8 +132,8 @@ pt->z();
 (*ptr->vptr[4])(ptr)；
 ```
 
-小标题：多重继承下的virtual functions
-代码是这样的
+### 多重继承下的virtual functions
+有这样的继承关系：
 ```
 class Base1 {
  public:
@@ -161,10 +167,6 @@ class Derived : public Base1, public Base2 {
   float data_Derived;
 };
 ```
-讨论三个问题：
-virttual destructor
-base2::mumble
-clone
 
 有如下代码
 ```
@@ -175,21 +177,22 @@ Base2 *pbase2 = new Derived;
 Derived *temp = new Derived;
 Base2 *pbase2 = temp ? tmp + sizeof(Base1) : 0;
 ```
-像这样非多态的调用才能正常运行
+只有这样，下面的非多态的调用才能正常运行
 ```
 pbase2->data_Base2;
 ```
+
 此时程序员要删除 pbase2 所指对象
 ```
 delete pbase2
 ```
-指针必须再调整一次，以指向 Derived 对象的起始处。为啥非得指到开头才能删呢？因为编译器会把delete转化为：
+指针必须再调整一次，以指向 Derived 对象的起始处。
 ```
 Derived::~Derived(pbase2+sizeof(Base1))
 ```
-问：怎样才能确定offset?
 
-
+### 引出一个问题：怎样才能确定offset?
+换句话说怎样存取offset.
 
 方法1: 扩充virtual table
 ```
@@ -202,21 +205,22 @@ Derived::~Derived(pbase2+sizeof(Base1))
 faddr 为 virtual function 的地址，offset 为 this 指针的调整值。
 这个做法的缺点就是对每个 virtual function 的调用操作都有影响，即使不需要 offset 的情况也是如此。
 
-手绘图
+图(手绘)
 
 方法二：trunk
-trunk是一小段机器码，这段机器码可以放this指针调整offet，并且执行虚函数。例如：
+trunk是一小段机器码，这段机器码可以让this指针调整offet，并且执行虚函数。例如：
 ```
 pbase2_dtor_thunk:
   this += sizeof(Base1)
   Derived::~Derived(this)
 ```
-手绘图
+图(手绘)
 
 优点：虚函数表本身没变化，也避免了不需要的offset.
 
-本例的布局如下图:
+本例多重继承的布局如下图:
 图2
+
 
 对本例而言，有两个 virtual table：
 一个主要实体，与 Base1（最左端 base class）共享。
@@ -238,7 +242,7 @@ Base2 *pb2 = pb1->clone();
 第 1 行调用时，pb1 会被调整以指向 Derived 对象的起始地址，从而 clone() 的 Derived 版会被调用，它会传回一个指向 Derived 对象的指针，在这个指针值被指定给 pb2 之前，必须先经过调整，以指向 Base2 subobject。
 
 
-4.4 指向 Member Function 的指针（Pointer-to-Member Functions）
+## 4.4 指向 Member Function 的指针（Pointer-to-Member Functions）
 一个指向 member function 的指针，其声明语法如下：
 ```
 double      // return type
@@ -263,7 +267,7 @@ coord = &Point::y;
 ```
 使用“member function 指针”，如果不用于 virtual function、多重继承、virtual base class 等情况的话，并不会比使用一个“nonmember function 指针”的成本更高。
 
-小标题：支持“指向 Virtual Members Functions”之指针
+### 支持“指向 Virtual Members Functions”之指针
 ```
 float (Point::*pmf)() = &Point::z; // virtual function
 Point *ptr = new Point3d;
@@ -299,14 +303,14 @@ float (Point::*pmf)() = &Point::x;
 ```
 这种实现技巧必须假设继承体系中最多只有 128 个 virtual functions.
 
-小标题：在多重继承之下，指向 Member Functions 的指针
+### 在多重继承之下，指向 Member Functions 的指针
 ```
 struct __mptr {
-  int delta;
+  int delta; // this指针的offset值
   int index;  // 带有 virtual table 索引.当 index 不指向 virtual table 时，会被设为 -1
   union {
     ptrtofunc faddr;  // nonvirtual member function 地址
-    int       v_offset;
+    int       v_offset; // 相对于virtual base class的offset值
   };
 };
 ```
@@ -318,13 +322,13 @@ struct __mptr {
 ```
 这种方法会让每个调用操作都得付出上述成本。Microsoft 把这项检查拿掉，导入一个 vcall thunk，在此策略下，faddr 要不就是真正的 member function 地址（如果函数是 nonvirtual），要不就是 vcall thunk 的地址（如果函数是 virtual）。
 
-4.5 Inline function
-关键词 inline 只是一项请求，如果这项请求被接受，编译器就必须认为它可以用一个表达式（expression）合理地将这个函数扩展开。
+## 4.5 Inline function
+关键词 inline 只是一项请求，如果这项请求被接受，编译器就必须认为它可以用一个表达式（expression）合理地将这个函数扩展开。  
 编译器同意展开的条件是：
-    执行成本 < 一般函数调用以及返回的成本
+    * 执行成本 < 一般函数调用以及返回的成本
     
 
-小标题：形参
+### 形参
 在 inline 扩展期间，每一个形参都会被对应的实参取代。
 ```
 inline int min(int i, int j) {
@@ -360,7 +364,7 @@ minval =
 	t1 < t2 ? t1 : t2;
 ```
 
-小标题：局部变量
+### 局部变量
 ```
 inline int min(int i, int j) {
   int minval = i < j ? i : j;
