@@ -123,7 +123,7 @@ pt->z();
 
 在单一继承的情况下，virtual table布局如下图
 
-图1
+![image_text](https://github.com/lizhicun/c-obj-4/blob/main/image/virtual_table_layout.jpg)
 
 图中表明：派生类和基类中的同名虚函数，其索引一定得是一样的。
 
